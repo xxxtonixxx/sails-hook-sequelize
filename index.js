@@ -35,7 +35,13 @@ module.exports = function (sails) {
         for (modelName in models) {
           modelDef = models[modelName];
           sails.log.verbose('Loading model \'' + modelDef.globalId + '\'');
-          const model = sequelize.define(modelDef.globalId.toLowerCase(), modelDef.attributes, modelDef.options);
+
+          const snakeModelName = modelDef.globalId.replace(
+            /\.?([A-Z])/g,
+            (_, match) => "_" + match.toLowerCase()
+          ).replace(/^_/, "");
+
+          const model = sequelize.define(snakeModelName, modelDef.attributes, modelDef.options);
 
           if (modelDef.classMethods && typeof modelDef.classMethods === "object") {
             Object.keys(modelDef.classMethods).forEach(methodName => {
