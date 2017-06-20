@@ -1,8 +1,8 @@
-module.exports = function(sails) {
+module.exports = function (sails) {
   global['Sequelize'] = require('sequelize');
   Sequelize.cls = require('continuation-local-storage').createNamespace('sails-sequelize-postgresql');
   return {
-    initialize: function(next) {
+    initialize: function (next) {
       var hook = this;
       hook.initAdapters();
       hook.initModels();
@@ -27,7 +27,7 @@ module.exports = function(sails) {
         sequelize = new Sequelize(connection.database, connection.user, connection.password, connection.options);
       }
       global['sequelize'] = sequelize;
-      return sails.modules.loadModels(function(err, models) {
+      return sails.modules.loadModels(function (err, models) {
         var modelDef, modelName, ref;
         if (err != null) {
           return next(err);
@@ -35,41 +35,55 @@ module.exports = function(sails) {
         for (modelName in models) {
           modelDef = models[modelName];
           sails.log.verbose('Loading model \'' + modelDef.globalId + '\'');
-          global[modelDef.globalId] = sequelize.define(modelDef.globalId, modelDef.attributes, modelDef.options);
-          sails.models[modelDef.globalId.toLowerCase()] = global[modelDef.globalId];
+          const model = sequelize.define(modelDef.globalId.toLowerCase(), modelDef.attributes, modelDef.options);
+
+          if (modelDef.classMethods && typeof modelDef.classMethods === "object") {
+            Object.keys(modelDef.classMethods).forEach(methodName => {
+              model[methodName] = modelDef.classMethods[methodName];
+            });
+          }
+
+          if (modelDef.instanceMethods && typeof modelDef.classMethods === "object") {
+            Object.keys(modelDef.instanceMethods).forEach(methodName => {
+              model.prototype[methodName] = modelDef.instanceMethods[methodName];
+            });
+          }
+
+          global[modelDef.globalId] = model;
+          sails.models[modelDef.globalId] = global[modelDef.globalId];
         }
 
         for (modelName in models) {
           modelDef = models[modelName];
 
-          hook.setAssociation(modelDef);          
-          hook.setDefaultScope(modelDef);          
+          hook.setAssociation(modelDef);
+          hook.setDefaultScope(modelDef);
         }
 
-        if(migrate === 'safe') {
+        if (migrate === 'safe') {
           return next();
         } else {
           var forceSync = migrate === 'drop';
-          sequelize.sync({ force: forceSync }).then(function() {
+          sequelize.sync({ force: forceSync }).then(function () {
             return next();
           });
-        }        
+        }
       });
     },
 
-    initAdapters: function() {
-      if(sails.adapters === undefined) {
+    initAdapters: function () {
+      if (sails.adapters === undefined) {
         sails.adapters = {};
       }
     },
 
-    initModels: function() {
-      if(sails.models === undefined) {
+    initModels: function () {
+      if (sails.models === undefined) {
         sails.models = {};
       }
     },
 
-    setAssociation: function(modelDef) {
+    setAssociation: function (modelDef) {
       if (modelDef.associations != null) {
         sails.log.verbose('Loading associations for \'' + modelDef.globalId + '\'');
         if (typeof modelDef.associations === 'function') {
@@ -78,13 +92,13 @@ module.exports = function(sails) {
       }
     },
 
-    setDefaultScope: function(modelDef) {
+    setDefaultScope: function (modelDef) {
       if (modelDef.defaultScope != null) {
         sails.log.verbose('Loading default scope for \'' + modelDef.globalId + '\'');
         var model = global[modelDef.globalId];
         if (typeof modelDef.defaultScope === 'function') {
           var defaultScope = modelDef.defaultScope() || {};
-          model.addScope('defaultScope',defaultScope,{override: true});
+          model.addScope('defaultScope', defaultScope, { override: true });
         }
       }
     }
