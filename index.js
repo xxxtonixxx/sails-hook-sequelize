@@ -7,24 +7,24 @@ module.exports = function (sails) {
       hook.initAdapters();
       hook.initModels();
 
-      var connection, migrate, sequelize;
+      var datastore, migrate, sequelize;
       sails.log.verbose('Using datastore named ' + sails.config.models.datastore);
-      connection = sails.config.datastores[sails.config.models.datastore];
-      if (connection == null) {
+      datastore = sails.config.datastores[sails.config.models.datastore];
+      if (datastore == null) {
         throw new Error('Datastore \'' + sails.config.models.datastore + '\' not found in config/datastores');
       }
-      if (connection.options == null) {
-        connection.options = {};
+      if (datastore.options == null) {
+        datastore.options = {};
       }
-      connection.options.logging = connection.options.logging || sails.log.verbose; //A function that gets executed everytime Sequelize would log something.
+      datastore.options.logging = datastore.options.logging || sails.log.verbose; //A function that gets executed everytime Sequelize would log something.
 
       migrate = sails.config.models.migrate;
       sails.log.verbose('Migration: ' + migrate);
 
-      if (connection.url) {
-        sequelize = new Sequelize(connection.url, connection.options);
+      if (datastore.url) {
+        sequelize = new Sequelize(datastore.url, datastore.options);
       } else {
-        sequelize = new Sequelize(connection.database, connection.user, connection.password, connection.options);
+        sequelize = new Sequelize(datastore.database, datastore.user, datastore.password, datastore.options);
       }
       global['sequelize'] = sequelize;
       return sails.modules.loadModels(function (err, models) {
